@@ -15,26 +15,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Temporary hardcoded user (later you can use auth)
-const USER_ID = "demoUser";
+const USER_ID = "demoUser"; // temporary user
 
-
-// GET /plants → load all plants + unlocked status
+// ------------------------------
+// GET /plants
+// ------------------------------
 app.get("/plants", async (req, res) => {
   try {
-    // get plants from Firestore
     const plantSnap = await db.collection("plants").get();
-    const plants = plantSnap.docs.map(doc => doc.data());
+    const plants = plantSnap.docs.map(doc => doc.data()); // ids should be strings
 
-    // get unlocked plants
     const userRef = db.collection("users").doc(USER_ID);
     const userDoc = await userRef.get();
-
     const unlocked = userDoc.exists ? userDoc.data().unlockedPlants || [] : [];
 
     const result = plants.map(plant => ({
       ...plant,
-      unlocked: unlocked.includes(plant.id),
+      unlocked: unlocked.includes(String(plant.id)),  // compare strings
     }));
 
     res.json(result);
@@ -44,11 +41,12 @@ app.get("/plants", async (req, res) => {
   }
 });
 
-
-// POST /unlock/:id → mark a plant as unlocked
+// ------------------------------
+// POST /unlock/:id
+// ------------------------------
 app.post("/unlock/:id", async (req, res) => {
   try {
-    const plantId = Number(req.params.id);
+    const plantId = String(req.params.id);
     const userRef = db.collection("users").doc(USER_ID);
 
     await userRef.set(
@@ -65,18 +63,17 @@ app.post("/unlock/:id", async (req, res) => {
   }
 });
 
-// GET QUIZ FOR PLANT
+// ------------------------------
+// GET /quiz/:id
+// ------------------------------
 app.get("/quiz/:id", async (req, res) => {
   const id = String(req.params.id);
-  console.log("➡ Fetching quiz for ID:", id);
 
   try {
     const quizDoc = await db.collection("quizzes").doc(id).get();
-
     if (!quizDoc.exists) {
       return res.status(404).json({ error: "Quiz not found" });
     }
-
     res.json(quizDoc.data());
   } catch (err) {
     console.error("❌ Error loading quiz:", err);
@@ -84,15 +81,15 @@ app.get("/quiz/:id", async (req, res) => {
   }
 });
 
-// SUBMIT ANSWER
+// ------------------------------
+// POST /quiz/:id/submit
+// ------------------------------
 app.post("/quiz/:id/submit", async (req, res) => {
   const id = String(req.params.id);
   const { answerIndex } = req.body;
-  const USER_ID = "demoUser";
 
   try {
     const quizDoc = await db.collection("quizzes").doc(id).get();
-
     if (!quizDoc.exists) {
       return res.status(404).json({ error: "Quiz not found" });
     }
@@ -103,7 +100,7 @@ app.post("/quiz/:id/submit", async (req, res) => {
     if (isCorrect) {
       await db.collection("users").doc(USER_ID).set(
         {
-          unlockedPlants: admin.firestore.FieldValue.arrayUnion(Number(id)),
+          unlockedPlants: admin.firestore.FieldValue.arrayUnion(id),
         },
         { merge: true }
       );
