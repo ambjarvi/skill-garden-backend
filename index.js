@@ -23,7 +23,11 @@ const USER_ID = "demoUser"; // temporary user
 app.get("/plants", async (req, res) => {
   try {
     const plantSnap = await db.collection("plants").get();
-    const plants = plantSnap.docs.map(doc => doc.data()); // ids should be strings
+    const plants = plantSnap.docs.map(doc => ({
+      ...doc.data(),
+      id: String(doc.id),   // ALWAYS use Firestore doc ID as the authoritative ID
+    }));
+    
 
     const userRef = db.collection("users").doc(USER_ID);
     const userDoc = await userRef.get();
