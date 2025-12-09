@@ -65,39 +65,42 @@ app.post("/unlock/:id", async (req, res) => {
   }
 });
 
-// GET /quiz/:id → get quiz for a plant
+// GET QUIZ FOR PLANT
 app.get("/quiz/:id", async (req, res) => {
-  const id = req.params.id;
+  const id = String(req.params.id);
+  console.log("➡ Fetching quiz for ID:", id);
+
   try {
     const quizDoc = await db.collection("quizzes").doc(id).get();
+
     if (!quizDoc.exists) {
       return res.status(404).json({ error: "Quiz not found" });
     }
+
     res.json(quizDoc.data());
   } catch (err) {
-    console.error("Error fetching quiz:", err);
+    console.error("❌ Error loading quiz:", err);
     res.status(500).json({ error: "Failed to load quiz" });
   }
 });
 
-// POST /quiz/:id/submit → check answer + unlock if correct
+// SUBMIT ANSWER
 app.post("/quiz/:id/submit", async (req, res) => {
-  const id = req.params.id;
-  const { answerIndex } = req.body; // which option user picked
+  const id = String(req.params.id);
+  const { answerIndex } = req.body;
   const USER_ID = "demoUser";
 
   try {
     const quizDoc = await db.collection("quizzes").doc(id).get();
+
     if (!quizDoc.exists) {
       return res.status(404).json({ error: "Quiz not found" });
     }
 
     const quiz = quizDoc.data();
-
     const isCorrect = quiz.answerIndex === answerIndex;
 
     if (isCorrect) {
-      // unlock plant
       await db.collection("users").doc(USER_ID).set(
         {
           unlockedPlants: admin.firestore.FieldValue.arrayUnion(Number(id)),
@@ -108,7 +111,7 @@ app.post("/quiz/:id/submit", async (req, res) => {
 
     res.json({ correct: isCorrect });
   } catch (err) {
-    console.error("Error submitting quiz:", err);
+    console.error("❌ Error submitting quiz:", err);
     res.status(500).json({ error: "Failed to submit quiz" });
   }
 });
